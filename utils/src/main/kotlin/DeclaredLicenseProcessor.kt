@@ -105,7 +105,7 @@ object DeclaredLicenseProcessor {
 
         declaredLicenses.forEach { declaredLicense ->
             process(declaredLicense, declaredLicenseMapping)?.let {
-                processedLicenses[declaredLicense] = it
+                processedLicenses[declaredLicense] = it.disjunctiveNormalForm()
             } ?: run { unmapped += declaredLicense }
         }
 

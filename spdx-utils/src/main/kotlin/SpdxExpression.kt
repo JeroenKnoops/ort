@@ -198,8 +198,8 @@ class SpdxCompoundExpression(
     override fun decompose() = left.decompose() + right.decompose()
 
     override fun disjunctiveNormalForm(): SpdxExpression {
-        val leftDnf = left.disjunctiveNormalForm()
-        val rightDnf = right.disjunctiveNormalForm()
+        // Both AND and OR operators are commutative, so it is fine to sort operands alphabetically.
+        val (leftDnf, rightDnf) = listOf(left, right).sortedBy { it.toString() }
 
         return when (operator) {
             SpdxOperator.OR -> SpdxCompoundExpression(leftDnf, SpdxOperator.OR, rightDnf)
