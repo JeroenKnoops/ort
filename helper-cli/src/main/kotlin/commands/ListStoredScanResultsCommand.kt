@@ -77,9 +77,9 @@ internal class ListStoredScanResultsCommand : CliktCommand(
             }
         }
 
-        println("Found ${scanResults.results.size} scan results:")
+        println("Found ${scanResults.size} scan results:")
 
-        scanResults.results.forEach { result ->
+        scanResults.forEach { result ->
             println("\n${yamlMapper.writeValueAsString(result.provenance)}")
         }
     }

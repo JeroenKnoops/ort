@@ -35,7 +35,6 @@ import org.ossreviewtoolkit.model.Identifier
 import org.ossreviewtoolkit.model.Package
 import org.ossreviewtoolkit.model.Result
 import org.ossreviewtoolkit.model.ScanResult
-import org.ossreviewtoolkit.model.ScanResultContainer
 import org.ossreviewtoolkit.model.Success
 import org.ossreviewtoolkit.model.config.ClearlyDefinedStorageConfiguration
 import org.ossreviewtoolkit.model.config.FileBasedStorageConfiguration
@@ -212,21 +211,21 @@ abstract class ScanResultsStorage {
     val stats = AccessStatistics()
 
     /**
-     * Read all [ScanResult]s for a package with [id] from the storage. Return a [ScanResultContainer] wrapped in a
+     * Read all [ScanResult]s for a package with [id] from the storage. Return a list of [ScanResult]s wrapped in a
      * [Result], which is a [Failure] if an unexpected error occurred and a [Success] otherwise.
      */
-    fun read(id: Identifier): Result<ScanResultContainer> {
+    fun read(id: Identifier): Result<List<ScanResult>> {
         val (result, duration) = measureTimedValue { readInternal(id) }
 
         stats.numReads.incrementAndGet()
 
         if (result is Success) {
-            if (result.result.results.isNotEmpty()) {
+            if (result.result.isNotEmpty()) {
                 stats.numHits.incrementAndGet()
             }
 
             log.perf {
-                "Read ${result.result.results.size} scan results for '${id.toCoordinates()}' from " +
+                "Read ${result.result.size} scan results for '${id.toCoordinates()}' from " +
                         "${javaClass.simpleName} in ${duration.inMilliseconds}ms."
             }
         }
@@ -240,21 +239,21 @@ abstract class ScanResultsStorage {
      * [Package.vcs], and [Package.vcsProcessed] are used to check if the scan result matches the expected source code
      * location. That check is important to find the correct results when different revisions of a package using the
      * same version name are used (e.g. multiple scans of a "1.0-SNAPSHOT" version during development). Return a
-     * [ScanResultContainer] wrapped in a [Result], which is a [Failure] if an unexpected error occurred and a [Success]
+     * list of [ScanResult]s wrapped in a [Result], which is a [Failure] if an unexpected error occurred and a [Success]
      * otherwise.
      */
-    fun read(pkg: Package, scannerCriteria: ScannerCriteria): Result<ScanResultContainer> {
+    fun read(pkg: Package, scannerCriteria: ScannerCriteria): Result<List<ScanResult>> {
         val (result, duration) = measureTimedValue { readInternal(pkg, scannerCriteria) }
 
         stats.numReads.incrementAndGet()
 
         if (result is Success) {
-            if (result.result.results.isNotEmpty()) {
+            if (result.result.isNotEmpty()) {
                 stats.numHits.incrementAndGet()
             }
 
             log.perf {
-                "Read ${result.result.results.size} scan results for '${pkg.id.toCoordinates()}' from " +
+                "Read ${result.result.size} scan results for '${pkg.id.toCoordinates()}' from " +
                         "${javaClass.simpleName} in ${duration.inMilliseconds}ms."
             }
         }
@@ -289,9 +288,9 @@ abstract class ScanResultsStorage {
     }
 
     /**
-     * Add the given [scanResult] to the [ScanResultContainer] for the scanned [Package] with the provided [id].
-     * Depending on the storage implementation this might first read any existing [ScanResultContainer] and write the
-     * new [ScanResultContainer] to the storage again, implicitly deleting the original storage entry by overwriting it.
+     * Add the given [scanResult] to the stored [ScanResult]s for the scanned [Package] with the provided [id].
+     * Depending on the storage implementation this might first read any existing [ScanResult]s and write the new
+     * [ScanResult]s to the storage again, implicitly deleting the original storage entry by overwriting it.
      * Return a [Result] describing whether the operation was successful.
      */
     fun add(id: Identifier, scanResult: ScanResult): Result<Unit> {
@@ -326,19 +325,19 @@ abstract class ScanResultsStorage {
     /**
      * Internal version of [read] that does not update the [access statistics][stats].
      */
-    protected abstract fun readInternal(id: Identifier): Result<ScanResultContainer>
+    protected abstract fun readInternal(id: Identifier): Result<List<ScanResult>>
 
     /**
      * Internal version of [read] that does not update the [access statistics][stats]. Implementations may want to
      * override this function if they can filter for the wanted [scannerCriteria] in a more efficient way.
      */
-    protected open fun readInternal(pkg: Package, scannerCriteria: ScannerCriteria): Result<ScanResultContainer> {
+    protected open fun readInternal(pkg: Package, scannerCriteria: ScannerCriteria): Result<List<ScanResult>> {
         val scanResults = when (val readResult = readInternal(pkg.id)) {
-            is Success -> readResult.result.results.toMutableList()
+            is Success -> readResult.result.toMutableList()
             is Failure -> return readResult
         }
 
-        if (scanResults.isEmpty()) return Success(ScanResultContainer(pkg.id, scanResults))
+        if (scanResults.isEmpty()) return Success(scanResults)
 
         // Only keep scan results whose provenance information matches the package information.
         scanResults.retainAll { it.provenance.matches(pkg) }
@@ -347,7 +346,7 @@ abstract class ScanResultsStorage {
                 "No stored scan results found for $pkg. The following entries with non-matching provenance have " +
                         "been ignored: ${scanResults.map { it.provenance }}"
             }
-            return Success(ScanResultContainer(pkg.id, scanResults))
+            return Success(scanResults)
         }
 
         // Only keep scan results from compatible scanners.
@@ -357,10 +356,10 @@ abstract class ScanResultsStorage {
                 "No stored scan results found for $scannerCriteria. The following entries with incompatible scanners " +
                         "have been ignored: ${scanResults.map { it.scanner }}"
             }
-            return Success(ScanResultContainer(pkg.id, scanResults))
+            return Success(scanResults)
         }
 
-        return Success(ScanResultContainer(pkg.id, scanResults))
+        return Success(scanResults)
     }
 
     /**
@@ -374,16 +373,13 @@ abstract class ScanResultsStorage {
         scannerCriteria: ScannerCriteria
     ): Result<Map<Identifier, List<ScanResult>>> {
         val results = runBlocking(Dispatchers.IO) {
-            packages.map { async { readInternal(it, scannerCriteria) } }.map { it.await() }
-        }
+            packages.map { async { it.id to readInternal(it, scannerCriteria) } }.map { it.await() }
+        }.associate { it }
 
-        return if (results.all { it is Failure }) {
+        return if (results.all { it.value is Failure }) {
             Failure("Could not read any scan results from ${javaClass.simpleName}.")
         } else {
-            Success(
-                results.filterIsInstance<Success<ScanResultContainer>>()
-                    .associate { Pair(it.result.id, it.result.results) }
-            )
+            Success(results.filter { it.value is Success }.mapValues { (it.value as Success).result })
         }
     }
 

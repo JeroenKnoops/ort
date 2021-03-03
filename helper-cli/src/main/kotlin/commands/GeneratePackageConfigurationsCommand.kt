@@ -76,7 +76,7 @@ internal class GeneratePackageConfigurationsCommand : CliktCommand(
         outputDir.safeMkdirs()
 
         val scanResultsStorage = FileBasedStorage(LocalFileStorage(scanResultsStorageDir))
-        val scanResults = (scanResultsStorage.read(packageId) as? Success)?.result?.results ?: emptyList()
+        val scanResults = (scanResultsStorage.read(packageId) as? Success)?.result ?: emptyList()
 
         scanResults.find { it.provenance.vcsInfo != null }?.provenance
             ?.writePackageConfigurationFile("vcs.yml")

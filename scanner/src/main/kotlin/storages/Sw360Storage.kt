@@ -42,7 +42,6 @@ import org.ossreviewtoolkit.model.Failure
 import org.ossreviewtoolkit.model.Identifier
 import org.ossreviewtoolkit.model.Result
 import org.ossreviewtoolkit.model.ScanResult
-import org.ossreviewtoolkit.model.ScanResultContainer
 import org.ossreviewtoolkit.model.Success
 import org.ossreviewtoolkit.model.config.Sw360StorageConfiguration
 import org.ossreviewtoolkit.model.jsonMapper
@@ -65,7 +64,7 @@ class Sw360Storage(
     )
     private val releaseClient = sw360ConnectionFactory.releaseAdapter
 
-    override fun readInternal(id: Identifier): Result<ScanResultContainer> {
+    override fun readInternal(id: Identifier): Result<List<ScanResult>> {
         val tempScanResultFile = createTempFileForUpload(id)
 
         return try {
@@ -76,7 +75,7 @@ class Sw360Storage(
                 .map { path ->
                     yamlMapper.readValue<ScanResult>(path.toFile())
                 }
-            Success(ScanResultContainer(id, scanResults))
+            Success(scanResults)
         } catch (e: SW360ClientException) {
             val message = "Could not read scan results for ${id.toCoordinates()} in SW360."
             log.info { message }
