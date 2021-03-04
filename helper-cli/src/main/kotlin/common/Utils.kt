@@ -308,29 +308,27 @@ internal fun OrtResult.getLicenseFindingsById(
             packageConfigurationProvider.getPackageConfiguration(id, provenance)?.licenseFindingCurations.orEmpty()
         }
 
-    scanner?.results?.scanResults.orEmpty().filter { it.id == id }.forEach { scanResultContainer ->
-        scanResultContainer.results.forEach { scanResult ->
-            val findingsForProvenance = result.getOrPut(scanResult.provenance) { mutableMapOf() }
+    scanner?.results?.scanResults?.get(id)?.forEach { scanResult ->
+        val findingsForProvenance = result.getOrPut(scanResult.provenance) { mutableMapOf() }
 
-            scanResult.summary.licenseFindings.let { findings ->
-                if (applyCurations) {
-                    FindingCurationMatcher().applyAll(findings, getLicenseFindingsCurations(scanResult.provenance))
-                        .mapNotNullTo(mutableSetOf()) { it.curatedFinding }
-                } else {
-                    findings
+        scanResult.summary.licenseFindings.let { findings ->
+            if (applyCurations) {
+                FindingCurationMatcher().applyAll(findings, getLicenseFindingsCurations(scanResult.provenance))
+                    .mapNotNullTo(mutableSetOf()) { it.curatedFinding }
+            } else {
+                findings
+            }
+        }.let { findings ->
+            if (decomposeLicenseExpressions) {
+                findings.flatMap { finding ->
+                    finding.license.decompose().map { finding.copy(license = it) }
                 }
-            }.let { findings ->
-                if (decomposeLicenseExpressions) {
-                    findings.flatMap { finding ->
-                        finding.license.decompose().map { finding.copy(license = it) }
-                    }
-                } else {
-                    findings
-                }
-            }.forEach { finding ->
-                finding.license.decompose().forEach {
-                    findingsForProvenance.getOrPut(it) { mutableSetOf() } += finding.location
-                }
+            } else {
+                findings
+            }
+        }.forEach { finding ->
+            finding.license.decompose().forEach {
+                findingsForProvenance.getOrPut(it) { mutableSetOf() } += finding.location
             }
         }
     }
@@ -382,8 +380,8 @@ internal fun OrtResult.getPackageOrProject(id: Identifier): Package? =
 internal fun OrtResult.getProvenance(id: Identifier): Provenance? {
     val pkg = getPackageOrProject(id)!!
 
-    scanner?.results?.scanResults?.forEach { container ->
-        container.results.forEach { scanResult ->
+    scanner?.results?.scanResults?.forEach { (_, results) ->
+        results.forEach { scanResult ->
             if (scanResult.provenance.matches(pkg)) {
                 return scanResult.provenance
             }
@@ -400,9 +398,9 @@ internal fun OrtResult.getProvenance(id: Identifier): Provenance? {
 fun OrtResult.getScanIssues(omitExcluded: Boolean = false): List<OrtIssue> {
     val result = mutableListOf<OrtIssue>()
 
-    scanner?.results?.scanResults?.forEach { container ->
-        if (!omitExcluded || !isExcluded(container.id)) {
-            container.results.forEach { scanResult ->
+    scanner?.results?.scanResults?.forEach { (id, results) ->
+        if (!omitExcluded || !isExcluded(id)) {
+            results.forEach { scanResult ->
                 result += scanResult.summary.issues
             }
         }

@@ -132,7 +132,7 @@ class ReportTableModelMapper(
 
             val projectIssues = project.collectIssues()
             val tableRows = allIds.map { id ->
-                val scanResult = scanRecord?.scanResults?.find { it.id == id }
+                val scanResult = scanRecord?.scanResults?.get(id)
 
                 val resolvedLicenseInfo = licenseInfoResolver.resolveLicenseInfo(id)
 
@@ -145,7 +145,7 @@ class ReportTableModelMapper(
                 val analyzerIssues = projectIssues[id].orEmpty() + analyzerResult.issues[id].orEmpty() +
                         analyzerIssuesForPackages[id].orEmpty()
 
-                val scanIssues = scanResult?.results?.flatMapTo(mutableSetOf()) {
+                val scanIssues = scanResult?.flatMapTo(mutableSetOf()) {
                     it.summary.issues
                 }.orEmpty()
 

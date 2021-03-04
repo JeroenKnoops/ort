@@ -22,7 +22,7 @@ package org.ossreviewtoolkit.model
 import com.fasterxml.jackson.annotation.JsonAlias
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties
 
-import java.util.SortedSet
+import java.util.SortedMap
 
 /**
  * A record of a single run of the scanner tool, containing the input and the scan results for all scanned packages.
@@ -35,7 +35,7 @@ data class ScanRecord(
     /**
      * The [ScanResult]s for all [Package]s.
      */
-    val scanResults: SortedSet<ScanResultContainer>,
+    val scanResults: SortedMap<Identifier, List<ScanResult>>,
 
     /**
      * The [AccessStatistics] for the scan results storage.
@@ -49,9 +49,9 @@ data class ScanRecord(
     fun collectIssues(): Map<Identifier, Set<OrtIssue>> {
         val collectedIssues = mutableMapOf<Identifier, MutableSet<OrtIssue>>()
 
-        scanResults.forEach { container ->
-            container.results.forEach { result ->
-                collectedIssues.getOrPut(container.id) { mutableSetOf() } += result.summary.issues
+        scanResults.forEach { (id, results) ->
+            results.forEach { result ->
+                collectedIssues.getOrPut(id) { mutableSetOf() } += result.summary.issues
             }
         }
 
@@ -63,8 +63,8 @@ data class ScanRecord(
      */
     @Suppress("UNUSED") // Not used in code, but shall be serialized.
     val hasIssues by lazy {
-        scanResults.any { scanResultContainer ->
-            scanResultContainer.results.any { it.summary.issues.isNotEmpty() }
+        scanResults.any { (_, results) ->
+            results.any { it.summary.issues.isNotEmpty() }
         }
     }
 }

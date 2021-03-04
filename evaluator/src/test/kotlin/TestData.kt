@@ -35,7 +35,6 @@ import org.ossreviewtoolkit.model.Provenance
 import org.ossreviewtoolkit.model.Repository
 import org.ossreviewtoolkit.model.ScanRecord
 import org.ossreviewtoolkit.model.ScanResult
-import org.ossreviewtoolkit.model.ScanResultContainer
 import org.ossreviewtoolkit.model.ScanSummary
 import org.ossreviewtoolkit.model.ScannerDetails
 import org.ossreviewtoolkit.model.ScannerRun
@@ -181,24 +180,21 @@ val ortResult = OrtResult(
         environment = Environment(),
         config = ScannerConfiguration(),
         results = ScanRecord(
-            scanResults = sortedSetOf(
-                ScanResultContainer(
-                    id = Identifier("Maven:org.ossreviewtoolkit:package-with-only-detected-license:1.0"),
-                    results = listOf(
-                        ScanResult(
-                            provenance = Provenance(),
-                            scanner = ScannerDetails.EMPTY,
-                            summary = ScanSummary(
-                                startTime = Instant.EPOCH,
-                                endTime = Instant.EPOCH,
-                                fileCount = 1,
-                                packageVerificationCode = "",
-                                licenseFindings = sortedSetOf(
-                                    LicenseFinding("LicenseRef-a", TextLocation("LICENSE", 1)),
-                                    LicenseFinding("LicenseRef-b", TextLocation("LICENSE", 2))
-                                ),
-                                copyrightFindings = sortedSetOf()
-                            )
+            scanResults = sortedMapOf(
+                Identifier("Maven:org.ossreviewtoolkit:package-with-only-detected-license:1.0") to listOf(
+                    ScanResult(
+                        provenance = Provenance(),
+                        scanner = ScannerDetails.EMPTY,
+                        summary = ScanSummary(
+                            startTime = Instant.EPOCH,
+                            endTime = Instant.EPOCH,
+                            fileCount = 1,
+                            packageVerificationCode = "",
+                            licenseFindings = sortedSetOf(
+                                LicenseFinding("LicenseRef-a", TextLocation("LICENSE", 1)),
+                                LicenseFinding("LicenseRef-b", TextLocation("LICENSE", 2))
+                            ),
+                            copyrightFindings = sortedSetOf()
                         )
                     )
                 )

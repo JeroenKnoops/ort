@@ -134,9 +134,9 @@ private fun OrtResult.getLicenseFindingsForAllProjects(): Set<LicenseFinding> {
     val result = mutableSetOf<LicenseFinding>()
 
     val projectIds = getProjects().mapTo(mutableSetOf()) { it.id }
-    scanner?.results?.scanResults?.forEach { container ->
-        if (container.id in projectIds) {
-            container.results.forEach { scanResult ->
+    scanner?.results?.scanResults?.forEach { (id, results) ->
+        if (id in projectIds) {
+            results.forEach { scanResult ->
                 result += scanResult.summary.licenseFindings
             }
         }

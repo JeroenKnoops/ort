@@ -35,7 +35,6 @@ import org.ossreviewtoolkit.model.RemoteArtifact
 import org.ossreviewtoolkit.model.Repository
 import org.ossreviewtoolkit.model.ScanRecord
 import org.ossreviewtoolkit.model.ScanResult
-import org.ossreviewtoolkit.model.ScanResultContainer
 import org.ossreviewtoolkit.model.ScanSummary
 import org.ossreviewtoolkit.model.ScannerDetails
 import org.ossreviewtoolkit.model.ScannerRun
@@ -139,21 +138,18 @@ val scanResults = listOf(
     packageWithConcludedAndDetectedLicense,
     packageWithDeclaredAndDetectedLicense,
     packageWithConcludedAndDeclaredAndDetectedLicense
-).mapTo(sortedSetOf()) {
-    ScanResultContainer(
-        id = it.id,
-        results = listOf(
-            ScanResult(
-                provenance = provenance,
-                scanner = ScannerDetails.EMPTY,
-                summary = ScanSummary(
-                    startTime = Instant.EPOCH,
-                    endTime = Instant.EPOCH,
-                    fileCount = 1,
-                    packageVerificationCode = "",
-                    licenseFindings = licenseFindings,
-                    copyrightFindings = sortedSetOf()
-                )
+).associateTo(sortedMapOf()) {
+    it.id to listOf(
+        ScanResult(
+            provenance = provenance,
+            scanner = ScannerDetails.EMPTY,
+            summary = ScanSummary(
+                startTime = Instant.EPOCH,
+                endTime = Instant.EPOCH,
+                fileCount = 1,
+                packageVerificationCode = "",
+                licenseFindings = licenseFindings,
+                copyrightFindings = sortedSetOf()
             )
         )
     )

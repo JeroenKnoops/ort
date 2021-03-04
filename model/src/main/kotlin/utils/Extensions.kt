@@ -19,13 +19,17 @@
 
 package org.ossreviewtoolkit.model.utils
 
+import java.io.File
+
 import org.ossreviewtoolkit.clients.clearlydefined.ClearlyDefinedService.Coordinates
 import org.ossreviewtoolkit.clients.clearlydefined.ClearlyDefinedService.SourceLocation
 import org.ossreviewtoolkit.clients.clearlydefined.ComponentType
 import org.ossreviewtoolkit.clients.clearlydefined.Provider
 import org.ossreviewtoolkit.model.Identifier
 import org.ossreviewtoolkit.model.Package
+import org.ossreviewtoolkit.model.Project
 import org.ossreviewtoolkit.model.RemoteArtifact
+import org.ossreviewtoolkit.model.ScanResult
 import org.ossreviewtoolkit.model.TextLocation
 import org.ossreviewtoolkit.model.VcsInfoCurationData
 import org.ossreviewtoolkit.utils.percentEncode
@@ -183,3 +187,19 @@ fun Identifier.toPurl() = "".takeIf { this == Identifier.EMPTY }
         append('@')
         append(version.percentEncode())
     }
+
+/**
+ * Return a list of [ScanResult]s where all results contains only findings from the same directory as the [project]'s
+ * definition file.
+ */
+fun List<ScanResult>.filterByProject(project: Project): List<ScanResult> {
+    val parentPath = File(project.definitionFilePath).parent ?: return this
+
+    return map { result ->
+        if (result.provenance.vcsInfo == null) {
+            result
+        } else {
+            result.filterByPath(parentPath)
+        }
+    }
+}
