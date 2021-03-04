@@ -400,3 +400,8 @@ tasks.register("allDependencies") {
         b.mustRunAfter(a)
     }
 }
+
+tasks.register("stage") {
+    val buildTasks = allprojects.map { it.tasks.named("build").get() }
+    dependsOn(buildTasks)
+}
