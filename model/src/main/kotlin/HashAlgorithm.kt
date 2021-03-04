@@ -65,7 +65,14 @@ enum class HashAlgorithm(private vararg val aliases: String, val verifiable: Boo
     /**
      * The Secure Hash Algorithm 2 with 512 bits, see [SHA-512](https://en.wikipedia.org/wiki/SHA-512).
      */
-    SHA512("SHA-512", "SHA512");
+    SHA512("SHA-512", "SHA512"),
+
+    /**
+     * The Secure Hash Algorithm 1, but calculated on a "blob" Git object type, see
+     * - https://git-scm.com/book/en/v2/Git-Internals-Git-Objects#_object_storage
+     * - https://docs.softwareheritage.org/devel/swh-model/persistent-identifiers.html#git-compatibility
+     */
+    SHA1_GIT("SHA-1-GIT", "SHA1-GIT", "SHA1GIT");
 
     companion object {
         /**
@@ -115,7 +122,14 @@ enum class HashAlgorithm(private vararg val aliases: String, val verifiable: Boo
             // lot of memory at the same time, also considering that this function could potentially be run on multiple
             // threads in parallel.
             val buffer = ByteArray(4 * 1024 * 1024)
-            val digest = MessageDigest.getInstance(toString())
+            val digest = if (this == SHA1_GIT) {
+                MessageDigest.getInstance(SHA1.toString()).apply {
+                    val header = "blob ${file.length()}\u0000"
+                    update(header.toByteArray())
+                }
+            } else {
+                MessageDigest.getInstance(toString())
+            }
 
             var length: Int
             while (inputStream.read(buffer).also { length = it } > 0) {
