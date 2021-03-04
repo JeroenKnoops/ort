@@ -81,6 +81,17 @@ Install the following basic prerequisites:
 
 Change into the directory with ORT's source code and run `docker build -t ort .`.
 
+### Build using Buildpacks
+
+Install the following basic prerequisites:
+
+* Docker 18.09 or later (and ensure its daemon is running).
+* Pack
+
+```
+pack build ort --builder heroku/buildpacks:20
+```
+
 ### Build natively
 
 Install these additional prerequisites:
